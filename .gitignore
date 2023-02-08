@@ -1,0 +1,13 @@
+# folders
+.vscode/
+ext_libs/
+
+# files
+
+*.zip
+*.elf
+*.d
+*.o
+*.su
+*.mk
+*.list
