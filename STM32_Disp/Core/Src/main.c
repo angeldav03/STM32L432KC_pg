@@ -34,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define RXB_SIZE 255
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,25 +48,37 @@ ADC_HandleTypeDef hadc1;
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart2;
-
-HAL_StatusTypeDef stat_uart2;
-
-uint8_t BUFF[255];
-char INFO[255];
+DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
-
+SSD1306_COLOR colState = White;
+uint8_t yPos = 10;
+char retVal;
+uint8_t RxBuf[RXB_SIZE];
+uint8_t MainB[1024];
+char INFO[255];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void stcp(uint8_t *inp, char *out);
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+	if(huart->Instance == USART2){
+		memcpy(MainB, RxBuf, RXB_SIZE);
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuf, RXB_SIZE);
+		__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
+	}
+
+}
 
 /* USER CODE END PFP */
 
@@ -82,6 +95,8 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
+	RxBuf[0] = '\0';
+	INFO[0] = '\0';
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -98,36 +113,34 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
   char greetings[255] = "Hello Davide!";
-  char retVal;
+  ssd1306_Init();
+  ssd1306_SetCursor(2, yPos);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   ssd1306_Init();
-/*  ssd1306_Fill(White);
-  ssd1306_UpdateScreen(); */
-  SSD1306_COLOR colState = White;
-  uint8_t yPos = 10;
-  ssd1306_SetCursor(2, yPos);
-  BUFF[0] = '\0';
-  INFO[0] = '\0';
+  ssd1306_Fill(colState);
+  ssd1306_UpdateScreen();
+
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuf, RXB_SIZE);
+  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-	  // colState = colState ^ 0x01;
-	  stat_uart2 = HAL_UART_Receive(&huart2, BUFF, 127, 1200);
-	  sprintf(INFO, "u2:%d sl:%d", stat_uart2, strlen(BUFF));
-	  stcp(BUFF, greetings);  // if(stat_uart2 != HAL_TIMEOUT)
-	  retVal = ssd1306_WriteString(INFO, Font_7x10, colState);
+//	  stat_uart2 = HAL_UART_Receive(&huart2, BUFF, 127, 1200);
+//	  sprintf(INFO, "u2:%d sl:%d", stat_uart2, strlen(BUFF));
+//	  stcp(BUFF, greetings);  // if(stat_uart2 != HAL_TIMEOUT)
+//	  retVal = ssd1306_WriteString(INFO, Font_7x10, colState);
 	  retVal = ssd1306_WriteString(greetings, Font_7x10, colState);
 	  HAL_GPIO_TogglePin(GPIOB, LD3_Pin);
 	  HAL_GPIO_TogglePin(GPIOA, LD1_Pin);
@@ -141,23 +154,13 @@ int main(void)
 		  ssd1306_UpdateScreen();
 	  }
 	  ssd1306_SetCursor(2, yPos);
+    /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
 
-/**
-  *@brief copy the string in uint8 into char
-  *@retval None
-**/
-static void stcp(uint8_t *inp, char *out){
-	uint8_t num = 0;
-	while(inp[num] == 127) {
-		out[num]=(char) inp[num];
-		++num;
-	}
-	out[254] = '\0';
-}
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -340,7 +343,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 19200;
+  huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -356,6 +359,22 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
 
 }
 
@@ -381,7 +400,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : LD1_Pin */
   GPIO_InitStruct.Pin = LD1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; // tested GPIO_MODE_OUTPUT_OD
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD1_GPIO_Port, &GPIO_InitStruct);
