@@ -34,7 +34,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define RXB_SIZE 255
+#define RXB_SIZE 127
+#define MBUF_SIZE 512
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,9 +55,15 @@ DMA_HandleTypeDef hdma_usart2_rx;
 SSD1306_COLOR colState = White;
 uint8_t yPos = 10;
 char retVal;
+
 uint8_t RxBuf[RXB_SIZE];
-uint8_t MainB[1024];
-char INFO[255];
+uint8_t MainB[MBUF_SIZE];
+char greetings[256];
+char INFO[24];
+
+uint8_t end_fl = 0;
+uint16_t oldPos = 0;
+uint16_t newPos = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,17 +75,80 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
-static void stcp(uint8_t *inp, char *out);
+static void stcp(uint8_t *inp, char *out){
+uint8_t num = 0;
+while(inp[num] != '\a') {
+	out[num]=(char) inp[num];
+	++num;
+	if(num >= 254) {out[254] = '\0'; break;}
+}
+out[254] = '\0';
+}
+
+static void eraseBuff(uint8_t *data, uint16_t Size){
+	uint16_t idx = 0;
+	for(idx = 0; idx < Size; idx++) data[idx] = 0;
+}
+
+uint8_t bellChk(uint8_t *datas, uint16_t Size){
+	uint16_t idx = 0;
+	for(idx = 0; idx < Size; idx++){
+		if(datas[idx] == 0X07) return 1;
+	}
+	return 0;
+}
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
-{
+{ // DMA callback function
 	if(huart->Instance == USART2){
-		memcpy(MainB, RxBuf, RXB_SIZE);
+		oldPos = newPos; // Updating last position before copying new data
+
+		if((oldPos + Size > MBUF_SIZE) || bellChk(MainB, MBUF_SIZE)){
+			eraseBuff(MainB, MBUF_SIZE);
+			// uint16_t datatocopy = MBUF_SIZE - oldPos;
+			oldPos = 0;  // point to the start of the buffer
+			memcpy((uint8_t *)(MainB+oldPos), RxBuf, Size);
+		}
+		else
+		{
+			memcpy ((uint8_t *)(MainB + oldPos), RxBuf, Size);
+			newPos = Size+oldPos;
+		}
+
+
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuf, RXB_SIZE);
 		__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
 	}
 
 }
+
+static void displayStr(){
+  eraseBuff((uint8_t *) greetings, 255);
+  char line[20];
+  uint16_t pos = 0;
+  yPos = 10;
+  ssd1306_Fill(Black);
+  ssd1306_UpdateScreen();
+  stcp(MainB, greetings);
+  while(greetings[pos] != '\a'){
+    line[(pos%17)] = greetings[pos];
+    if(pos%18 == 17){
+      line[18] = '\0';
+      retVal = ssd1306_WriteString(line, Font_7x10, colState);
+      yPos += 10;
+      ssd1306_UpdateScreen();
+    }
+
+    if(yPos > 65){
+		  yPos = 10;
+		  ssd1306_Fill(Black);
+		  ssd1306_UpdateScreen();
+	  }
+    ssd1306_SetCursor(2, yPos);
+    pos++;
+  }
+  eraseBuff(MainB, MBUF_SIZE);
+} 
 
 /* USER CODE END PFP */
 
@@ -94,9 +164,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
-	RxBuf[0] = '\0';
-	INFO[0] = '\0';
+	//RxBuf[0] = '\0';
+	//INFO[0] = '\0';
+	strcpy(greetings, "Hello World!");
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -112,7 +182,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  char greetings[255] = "Hello Davide!";
+
   ssd1306_Init();
   ssd1306_SetCursor(2, yPos);
   /* USER CODE END SysInit */
@@ -130,30 +200,22 @@ int main(void)
 
   HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuf, RXB_SIZE);
   __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
-
+  ssd1306_Fill(Black);
+  ssd1306_UpdateScreen();
   /* USER CODE END 2 */
-
+  
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  stat_uart2 = HAL_UART_Receive(&huart2, BUFF, 127, 1200);
+
 //	  sprintf(INFO, "u2:%d sl:%d", stat_uart2, strlen(BUFF));
-//	  stcp(BUFF, greetings);  // if(stat_uart2 != HAL_TIMEOUT)
-//	  retVal = ssd1306_WriteString(INFO, Font_7x10, colState);
-	  retVal = ssd1306_WriteString(greetings, Font_7x10, colState);
+    if(bellChk(MainB, MBUF_SIZE)) displayStr(); // CALLING THE FUNCTION TO DISPLAY
 	  HAL_GPIO_TogglePin(GPIOB, LD3_Pin);
 	  HAL_GPIO_TogglePin(GPIOA, LD1_Pin);
 	  // ssd1306_Fill(colState);
-	  ssd1306_UpdateScreen();
-	  yPos += 10;
-	  HAL_Delay(500);
-	  if(yPos > 65){
-		  yPos = 10;
-		  ssd1306_Fill(Black);
-		  ssd1306_UpdateScreen();
-	  }
-	  ssd1306_SetCursor(2, yPos);
+	  HAL_Delay(200);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
