@@ -124,29 +124,35 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
 static void displayStr(){
   eraseBuff((uint8_t *) greetings, 255);
-  char line[20];
-  uint16_t pos = 0;
-  yPos = 10;
+  //char line[20];
+//  uint16_t pos = 0;
   ssd1306_Fill(Black);
   ssd1306_UpdateScreen();
   stcp(MainB, greetings);
+  ssd1306_SetCursor(2, yPos);
+  retVal = ssd1306_WriteString(greetings, Font_7x10, colState);
+  /*
   while(greetings[pos] != '\a'){
-    line[(pos%17)] = greetings[pos];
-    if(pos%18 == 17){
-      line[18] = '\0';
-      retVal = ssd1306_WriteString(line, Font_7x10, colState);
-      yPos += 10;
-      ssd1306_UpdateScreen();
-    }
+    //line[(pos%17)] = greetings[pos];
 
+    if(pos%18 == 17){
+      //line[18] = '\0';
+      retVal = ssd1306_WriteString(greetings+pos, Font_7x10, colState);
+      yPos += 10;
+    }
+*/
+    yPos += 10;
     if(yPos > 65){
 		  yPos = 10;
 		  ssd1306_Fill(Black);
 		  ssd1306_UpdateScreen();
 	  }
+ /*
     ssd1306_SetCursor(2, yPos);
     pos++;
   }
+  */
+  ssd1306_UpdateScreen();
   eraseBuff(MainB, MBUF_SIZE);
 } 
 
@@ -166,7 +172,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	//RxBuf[0] = '\0';
 	//INFO[0] = '\0';
-	strcpy(greetings, "Hello World!");
+  strcpy(greetings, "Hello World!");
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -210,7 +216,7 @@ int main(void)
   {
 
 //	  sprintf(INFO, "u2:%d sl:%d", stat_uart2, strlen(BUFF));
-    if(bellChk(MainB, MBUF_SIZE)) displayStr(); // CALLING THE FUNCTION TO DISPLAY
+      if(bellChk(MainB, MBUF_SIZE)) displayStr(); // CALLING THE FUNCTION TO DISPLAY
 	  HAL_GPIO_TogglePin(GPIOB, LD3_Pin);
 	  HAL_GPIO_TogglePin(GPIOA, LD1_Pin);
 	  // ssd1306_Fill(colState);
