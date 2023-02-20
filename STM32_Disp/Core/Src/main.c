@@ -36,6 +36,7 @@
 /* USER CODE BEGIN PD */
 #define RXB_SIZE 127
 #define MBUF_SIZE 512
+#define DISPB_SIZE 128
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,7 +59,7 @@ char retVal;
 
 uint8_t RxBuf[RXB_SIZE];
 uint8_t MainB[MBUF_SIZE];
-char greetings[256];
+char greetings[DISPB_SIZE];
 char INFO[24];
 
 uint8_t end_fl = 0;
@@ -80,9 +81,9 @@ uint8_t num = 0;
 while(inp[num] != '\a') {
 	out[num]=(char) inp[num];
 	++num;
-	if(num >= 254) {out[254] = '\0'; break;}
+	if(num >= DISPB_SIZE-1) {out[DISPB_SIZE-1] = '\0'; break;}
 }
-out[254] = '\0';
+out[DISPB_SIZE-1] = '\0';
 }
 
 static void eraseBuff(uint8_t *data, uint16_t Size){
@@ -103,11 +104,11 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 	if(huart->Instance == USART2){
 		oldPos = newPos; // Updating last position before copying new data
 
-		if((oldPos + Size > MBUF_SIZE) ){    //|| bellChk(MainB, MBUF_SIZE)
+		if((oldPos + Size > MBUF_SIZE) || RxBuf[0] == '\b' ){    //|| bellChk(MainB, MBUF_SIZE)
 			eraseBuff(MainB, MBUF_SIZE);
 			// uint16_t datatocopy = MBUF_SIZE - oldPos;
 			oldPos = 0;  // point to the start of the buffer
-			memcpy((uint8_t *)(MainB + oldPos), RxBuf, Size);
+			//memcpy((uint8_t *)(MainB + oldPos), RxBuf, Size);
 		}
 		else
 		{
@@ -123,9 +124,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 }
 
 static void displayStr(){
-  eraseBuff((uint8_t *) greetings, 255);
-  //char line[20];
-//  uint16_t pos = 0;
+  eraseBuff((uint8_t *) greetings, 255); // erase the buffer
   ssd1306_Fill(Black);
   ssd1306_UpdateScreen();
   stcp(MainB, greetings);
