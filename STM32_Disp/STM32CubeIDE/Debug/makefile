@@ -65,8 +65,8 @@ all: main-build
 main-build: STM32_Disp.elf secondary-outputs
 
 # Tool invocations
-STM32_Disp.elf STM32_Disp.map: $(OBJS) $(USER_OBJS) /home/davide/GIT/my-github/STM32L432KC_pg/STM32_Disp/STM32CubeIDE/STM32L432KCUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "STM32_Disp.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/davide/GIT/my-github/STM32L432KC_pg/STM32_Disp/STM32CubeIDE/STM32L432KCUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_Disp.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+STM32_Disp.elf STM32_Disp.map: $(OBJS) $(USER_OBJS) E:\GIT\angeldav03\STM32L432KC_pg\STM32_Disp\STM32CubeIDE\STM32L432KCUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "STM32_Disp.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"E:\GIT\angeldav03\STM32L432KC_pg\STM32_Disp\STM32CubeIDE\STM32L432KCUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_Disp.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -103,16 +103,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 	if(huart->Instance == USART2){
 		oldPos = newPos; // Updating last position before copying new data
 
-		if((oldPos + Size > MBUF_SIZE) || bellChk(MainB, MBUF_SIZE)){
+		if((oldPos + Size > MBUF_SIZE) ){    //|| bellChk(MainB, MBUF_SIZE)
 			eraseBuff(MainB, MBUF_SIZE);
 			// uint16_t datatocopy = MBUF_SIZE - oldPos;
 			oldPos = 0;  // point to the start of the buffer
-			memcpy((uint8_t *)(MainB+oldPos), RxBuf, Size);
+			memcpy((uint8_t *)(MainB + oldPos), RxBuf, Size);
 		}
 		else
 		{
-			memcpy ((uint8_t *)(MainB + oldPos), RxBuf, Size);
-			newPos = Size+oldPos;
+			memcpy((uint8_t *)(MainB + oldPos), RxBuf, Size);
+			newPos = Size+oldPos+1;
 		}
 
 
@@ -220,7 +220,7 @@ int main(void)
 	  HAL_GPIO_TogglePin(GPIOB, LD3_Pin);
 	  HAL_GPIO_TogglePin(GPIOA, LD1_Pin);
 	  // ssd1306_Fill(colState);
-	  HAL_Delay(200);
+	  HAL_Delay(50);
 
     /* USER CODE END WHILE */
 
@@ -363,7 +363,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00707CBB;
+  hi2c1.Init.Timing =  0x00300F38; //0x00707CBB;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
