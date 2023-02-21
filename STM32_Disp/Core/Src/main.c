@@ -99,6 +99,14 @@ uint8_t bellChk(uint8_t *datas, uint16_t Size){
 	return 0;
 }
 
+uint8_t rmBell(uint8_t *datas, uint16_t Size){
+	uint16_t idx = 0;
+	for(idx = 0; idx < Size; idx++){
+		if(datas[idx] == 0X07) {datas[idx]=0x20; return idx;}
+	}
+	return Size;
+}
+
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 { // DMA callback function
 	if(huart->Instance == USART2){
@@ -108,12 +116,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 			eraseBuff(MainB, MBUF_SIZE);
 			// uint16_t datatocopy = MBUF_SIZE - oldPos;
 			oldPos = 0;  // point to the start of the buffer
+			newPos = 0;
 			//memcpy((uint8_t *)(MainB + oldPos), RxBuf, Size);
 		}
 		else
 		{
 			memcpy((uint8_t *)(MainB + oldPos), RxBuf, Size);
-			newPos = Size+oldPos+1;
+			newPos = Size+oldPos;
 		}
 
 
@@ -124,35 +133,37 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 }
 
 static void displayStr(){
-  eraseBuff((uint8_t *) greetings, 255); // erase the buffer
+  eraseBuff((uint8_t *) greetings, DISPB_SIZE); // erase the buffer
   ssd1306_Fill(Black);
   ssd1306_UpdateScreen();
   stcp(MainB, greetings);
-  ssd1306_SetCursor(2, yPos);
-  retVal = ssd1306_WriteString(greetings, Font_7x10, colState);
-  /*
-  while(greetings[pos] != '\a'){
-    //line[(pos%17)] = greetings[pos];
+  yPos = 9;
+  uint16_t pos = 0;
+  //unsigned len = 0;
+  ssd1306_SetCursor(1, yPos);
 
-    if(pos%18 == 17){
+  while(pos < newPos){
+
+
+    if(pos%17 == 0){
       //line[18] = '\0';
-      retVal = ssd1306_WriteString(greetings+pos, Font_7x10, colState);
+      retVal = ssd1306_WriteString((char *)greetings+pos, Font_7x10, colState);
       yPos += 10;
+      ssd1306_SetCursor(2, yPos); // New line on the display
     }
-*/
-    yPos += 10;
-    if(yPos > 65){
-		  yPos = 10;
-		  ssd1306_Fill(Black);
-		  ssd1306_UpdateScreen();
-	  }
- /*
-    ssd1306_SetCursor(2, yPos);
+
+
+    if(yPos > 64){
+      yPos = 9;
+      ssd1306_Fill(Black);
+      ssd1306_SetCursor(2, yPos); // New line on the display
+      ssd1306_UpdateScreen();
+    }
     pos++;
   }
-  */
+
   ssd1306_UpdateScreen();
-  eraseBuff(MainB, MBUF_SIZE);
+  rmBell(MainB, MBUF_SIZE);
 } 
 
 /* USER CODE END PFP */
